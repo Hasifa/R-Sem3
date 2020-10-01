@@ -1,0 +1,230 @@
+---
+title: "Predicting Labour Wages using Ridge and Lasso Regression"
+author: "STUDENT COPY"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+
+# Ridge and Lasso Regression
+
+$$RSS(\beta) + \lambda \sum_{j=1}^{p} \beta_j^2$$
+
+$$RSS(\beta) + \lambda \sum_{j=1}^{p} |\beta_j|$$
+
+# Read and Understand the data
+
+```{r}
+getwd()
+labour_data <- read.csv("labour_income.csv")
+```
+```{r}
+str(labour_data)
+```
+
+
+```{r}
+summary(labour_data)
+```
+
+# Data Pre-processing
+
+## Train-Test Split
+
+* Split the data into train and test
+
+```{r}
+set.seed(007)
+train_row <- sample(x=seq(1,nrow(labour_data),1),size = 0.7*nrow(labour_data))
+
+train_data <- labour_data[train_row,]
+test_data <- labour_data[-train_row,]
+```
+
+
+```{r}
+```
+
+## Standardize the Data
+
+* Standardize the continuous independent variables
+
+```{r}
+library(caret)
+```
+```{r}
+library(ggplot2)
+```
+
+```{r}
+library(lattice)
+```
+```{r}
+std_obj <- preProcess(x=train_data[,!colnames(train_data) %in%    c("wages")],                                      method=c("center","scale"))
+train_std_data <- predict(std_obj , train_data)
+
+test_std_data <- predict(std_obj,test_data)
+```
+
+## Dummify the Data
+
+* Use the dummyVars() function from caret to convert sex and age into dummy variables
+
+```{r}
+dummy_oj <- dummyVars(~., train_std_data)
+train_dummy_data <- as.data.frame(predict(dummy_oj,train_std_data))
+test_dummy_data <- as.data.frame(predict(dummy_oj,test_std_data))
+
+```
+
+
+## Get the data into a compatible format
+
+* The functions we will be using today from the glmnet package expect a matrix as an input and not our familiar formula structure, so we need to convert our dataframes into a matrix
+
+```{r}
+x_train <- as.matrix(train_dummy_data[,-1])
+y_train <- as.matrix(train_dummy_data[,1])
+x_test <- as.matrix(train_dummy_data[,-1])
+y_test <- as.matrix(train_dummy_data[,1])
+
+```
+
+# Hyper-parameter Tuning
+
+* Choose an optimal lambda value for the ridge and lasso regression models by using cross validation
+
+## Choosing a lambda for Lasso Regression
+
+* The alpha value is 1 for lasso regression
+
+```{r}
+library(glmnet)
+
+```
+```{r}
+library(foreach)
+```
+
+
+```{r}
+library(Matrix)
+```
+
+
+
+```{r}
+cv_lasso <- cv.glmnet(x_train, y_train, alpha =1, type.measure = "mse",nfolds = 4)
+plot(cv_lasso)
+```
+
+* The object returned form the call to cv.glmnet() function, contains the lambda values of importance
+
+
+* The coefficients are accessible calling the coef() function on the cv_lasso object
+
+```{r}
+plot(cv_lasso$glmnet.fit,xvar="lambda",label = TRUE)
+```
+```{r}
+print(cv_lasso$lambda.min)
+```
+```{r}
+coef(cv_lasso)
+```
+
+## Choosing a lambda for Ridge Regression
+
+* The alpha value is 0 for ridge regression
+
+```{r}
+cv_ridge<- cv.glmnet(x_train, y_train, alpha =0, type.measure = "mse",nfolds = 4)
+plot(cv_ridge)
+```
+
+
+* We can access the lambda and the coefficients as we did before
+
+```{r}
+plot(cv_ridge$glmnet.fit,xvar="lambda",label = TRUE)
+```
+```{r}
+print(cv_ridge$lambda.min)
+
+```
+
+```{r}
+coef(cv_ridge)
+```
+
+
+# Building The Final Model
+
+* By using the optimal lambda values obtained above, we can build our ridge and lasso models
+
+## Building the Final Lasso Regression Model
+
+```{r}
+lasso_model <-glmnet(x_train, y_train, lambda = cv_lasso$lambda.min,alpha = 1)
+coef(lasso_model)
+```
+
+* Use the model to predict on test data
+
+```{r}
+preds_lasso <- predict(lasso_model,x_test)
+```
+
+## Building the Final Ridge Regression Model
+
+```{r}
+ridge_model <-glmnet(x_train, y_train, lambda = cv_ridge$lambda.min,alpha = 0)
+coef(ridge_model)
+```
+
+* Use the model to predict on test data
+
+```{r}
+preds_ridge <- predict(ridge_model,x_test)
+
+```
+
+
+# Model Performance Evaluation
+
+## Lasso Regression Model Metrics
+
+```{r}
+library(DMwR)
+```
+```{r}
+regr.eval(trues = y_test , preds = preds_lasso)
+```
+
+## Ridge Regression Model Metrics
+
+```{r}
+regr.eval(trues = y_test , preds = preds_ridge)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
