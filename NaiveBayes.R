@@ -1,7 +1,7 @@
 install.packages("mlbench")
 library(mlbench)
 data(HouseVotes84)
-
+# created by hasifa
 #barplots for specific issue
 plot(as.factor(HouseVotes84[,2]))
 title(main="votes cast for issue1",xlab = "vote",ylab = "Num reps")
